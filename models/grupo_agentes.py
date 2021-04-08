@@ -1,4 +1,4 @@
-from odoo import models, fields
+from odoo import models, fields, api
 # Modulo para asignar automaticamente leads a agentes de ventas
 # 
 # 
@@ -30,7 +30,7 @@ class CrmLead(models.Model):
 
         if (self.localidad == 68):
 
-          li_agentes = self.env['security.role'].browse().user_ids # id = ?
+          li_agentes = self.env['security.role'].browse(2).user_ids # id = ?
 
           for agente in li_agentes:
 
@@ -58,7 +58,7 @@ class CrmLead(models.Model):
 
         else:
 
-          li_agentes = self.env['security.role'].browse().user_ids # id = ?
+          li_agentes = self.env['security.role'].browse(3).user_ids # id = ?
 
           for agente in li_agentes:
 

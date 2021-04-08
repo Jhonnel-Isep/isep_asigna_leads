@@ -23,5 +23,4 @@
 #
 ##############################################################################
 
-from . import crm_lead
-from . import res_users
+from . import grupo_agentes
