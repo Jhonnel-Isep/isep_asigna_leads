@@ -20,8 +20,10 @@ class CrmLead(models.Model):
         # 68 = España, 
 
         if not agente:
-            asigna_agente()
-            values.update({'user_id': selec_agente()})
+            self.asigna_agente()
+            values.update({'user_id': self.selec_agente()})
+
+        return values
 
     def asigna_agente(self):
         list_agentes = []
@@ -30,11 +32,11 @@ class CrmLead(models.Model):
 
         if (self.localidad == 68):
 
-          li_agentes = self.env['security.role'].browse(2).user_ids # id = ?
+          li_agentes = self.env['security.role'].browse(2).user_ids # id = ?.
 
           for agente in li_agentes:
-
-            list_agentes.append(agente)
+            
+            list_agentes.append(agente.id)
 
             cant_leads = 0
             tasa_conv = []
@@ -49,7 +51,13 @@ class CrmLead(models.Model):
               tasa_conv.append(leads.probability)
 
             list_cant_leads.append(cant_leads)
-            tasat_conv = sum(tasa_conv) / len(tasa_conv)
+            
+            try:
+              tasat_conv = sum(tasa_conv) / len(tasa_conv)
+
+            except:
+              tasat_conv = 0
+
             list_tasat_conv.append(tasat_conv)
 
           self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
@@ -62,9 +70,9 @@ class CrmLead(models.Model):
 
           for agente in li_agentes:
 
-            if not(agente.country_id.name.lower() in filtro_feriado()):
-              # aqui se filtran agentes dia feriado
-              list_agentes.append(agente)
+            if not(agente.country_id.name.lower() in self.filtro_feriado()):
+
+              list_agentes.append(agente.id)
 
               cant_leads = 0
               tasa_conv = []
@@ -80,9 +88,15 @@ class CrmLead(models.Model):
 
               list_cant_leads.append(cant_leads)
 
-              tasat_conv = sum(tasa_conv) / len(tasa_conv)
+              try:
+                tasat_conv = sum(tasa_conv) / len(tasa_conv)
+
+              except:
+                tasat_conv = 0
+
               list_tasat_conv.append(tasat_conv)
 
+          print(li_agentes)
           self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
 
 
@@ -124,18 +138,18 @@ class CrmLead(models.Model):
       index=0
       mayor=0
       for i in self.dic_agents["Numero de Leads"]:
-           if i < menor:
-               menor=i
+          if i < menor:
+              menor = i
       for i in self.dic_agents["Numero de Leads"]:
-          if i ==menor:
-              lista.append(self.dic_agents["Agente"][index])
-          index+=1
+          if i == menor:
+              lista.append(self.dic_agents["Agente"][index])    
+          index += 1
 
-      index=0
+      index = 0
       for i in lista:
-         if i > mayor:
-             mayor =i
-             index+=1
+          if i > mayor:
+              mayor = i
+              index += 1
       agente = lista[index-1]
 
       return agente # retorna el agente seleccionado
