@@ -10,46 +10,13 @@ class CrmLead(models.Model):
 		self.mail = values.get('email_from')
 		self.localidad = values.get('country_id')
 		# 68 = España, 
-		
-		#if self.viejo_lead():
-		#	values.update({'user_id': self.viejo_lead()})
 
 		if not self.agente:
 			self.asigna_agente()
-			values.update({'user_id': self.selec_agente()})
+			values.update({'user_id': self.viejo_lead()})
 
 		res = super(CrmLead, self).create(values)
 		return res
-
-	# def viejo_lead(self):
-	# 	#todos_leads = # Farjan leads (telf[0], correo[1] el agente[2] "actual") [[telf,telf...],[mail,mail...],[agente,agente...]]
-
-	# 	todos_leads = self.env['crm.lead'].search([])
-
-	# 	telefonos = []
-	# 	emails = []
-	# 	agentes = []
-
-	# 	for lead in todos_leads:
-	# 		telefonos.append(lead.phone)
-	# 		emails.append(lead.email_from)
-	# 		agentes.append(lead.user_id)
-
-	# 	li_todos_leads = [telefonos, emails, agentes]
-		
-	# 	for telf in li_todos_leads[0]:
-	# 		if self.telf  == telf:
-	# 			indice = li_todos_leads[0].index(telf)
-	# 			agente =  li_todos_leads[2][indice]
-			
-
-	# 	for mail in li_todos_leads[1]:
-	# 		if self.mail  == mail:
-	# 			indice = li_todos_leads[1].index(mail)
-	# 			agente =  li_todos_leads[2][indice]
-			
-	# 	return agente.id
-
 
 	def asigna_agente(self):
 		list_agentes = []
@@ -58,7 +25,7 @@ class CrmLead(models.Model):
 
 		if (self.localidad == 68):
 
-			li_agentes = self.env['security.role'].browse(139).user_ids ### --> COLOCAR EL ID DEL ROL DE ESPAÑA <-- ###
+			li_agentes = self.env['security.role'].browse(139).user_ids
 
 			for agente in li_agentes:
             
@@ -92,7 +59,7 @@ class CrmLead(models.Model):
 
 		else:
 
-			li_agentes = self.env['security.role'].browse(140).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
+			li_agentes = self.env['security.role'].browse(140).user_ids
 
 			for agente in li_agentes:
 
@@ -157,9 +124,9 @@ class CrmLead(models.Model):
 
 		return paises
 
+	
+	def viejo_lead(self):
 
-	def selec_agente(self):
-		
 		aux = False
 		aux2 = False
 		todos_leads = self.env['crm.lead'].search([])
@@ -197,34 +164,47 @@ class CrmLead(models.Model):
 					
 					break
 
-
 		if (aux2 == True):
 			indice = aux_indice
 			agente = aux_agente
 
+			#return agente
+
 		else:
-			menor=10000
-			lista=[]
-			index=0
-			mayor=0
+			agente = self.selec_agente()
 
-			for i in self.dic_agents["Numero de Leads"]:
-				if i < menor:
-					menor = i
-
-			for i in self.dic_agents["Numero de Leads"]:
-				if i == menor:
-					lista.append(self.dic_agents["Agente"][index])    
-				index += 1
-
-			index = 0
-			for i in lista:
-
-				if i > mayor:
-					mayor = i
-					index += 1
-
-			agente = lista[index-1]
-
+			##########
+			# Este else es para colocar la funcion que se debe ejecutar en el caso de que el lead no haya sido atendido antes.
+			##########
 
 		return agente
+
+
+
+	def selec_agente(self):
+
+		menor=10000
+		lista=[]
+		index=0
+		mayor=0
+
+		for i in self.dic_agents["Numero de Leads"]:
+			if i < menor:
+				menor = i
+
+		for i in self.dic_agents["Numero de Leads"]:
+			if i == menor:
+				lista.append(self.dic_agents["Agente"][index])    
+			index += 1
+
+		index = 0
+		for i in lista:
+
+			if i > mayor:
+				mayor = i
+				index += 1
+
+		agente = lista[index-1]
+
+
+	return agente
