@@ -171,7 +171,7 @@ class CrmLead(models.Model):
 		for lead in todos_leads:
 			telefonos.append(lead.phone)
 			emails.append(lead.email_from)
-			agentes.append(lead.user_id) ### --> COLOCAR EL FIELD DE "ACTUAL" <-- ###
+			agentes.append(lead.x_contactonuevoodup12)
 
 		li_todos_leads = [telefonos, emails, agentes]
 			
