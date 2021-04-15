@@ -58,7 +58,7 @@ class CrmLead(models.Model):
 
 		if (self.localidad == 68):
 
-			li_agentes = self.env['security.role'].browse(2).user_ids ### --> COLOCAR EL ID DEL ROL DE ESPAÑA <-- ###
+			li_agentes = self.env['security.role'].browse(139).user_ids ### --> COLOCAR EL ID DEL ROL DE ESPAÑA <-- ###
 
 			for agente in li_agentes:
             
@@ -92,7 +92,7 @@ class CrmLead(models.Model):
 
 		else:
 
-			li_agentes = self.env['security.role'].browse(3).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
+			li_agentes = self.env['security.role'].browse(140).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
 
 			for agente in li_agentes:
 
