@@ -16,17 +16,22 @@ class CrmLead(models.Model):
 		# 68 = España, 
 
 		if not self.agente:
-			self.asigna_agente()
-			values.update({'user_id': self.viejo_lead()})
+			self.diccionario_agentes()
+			if asigna_anterior() == False:
+				selec_agente()
+			
+					
+			
 
 
 		res = super(CrmLead, self).create(values)
 		return res
 
-	def asigna_agente(self):
+	def diccionario_agentes(self): # Filtro 1 y 2
 		list_agentes = []
 		list_cant_leads = []
 		list_tasat_conv = []
+		dic_agents = {}
 
 		if (self.localidad == 68):
 
@@ -68,8 +73,8 @@ class CrmLead(models.Model):
 
 			for agente in li_agentes:
 
-				if not(agente.country_id.name.lower() in self.filtro_feriado()): # FIltrado de agentes feriados
-					if not(agente.country_id.name.lower() in self.filtro_horario):
+				if not(agente.country_id.name.lower() in self.filtro_feriado()): # Filtrado de agentes feriados
+					if not(agente.country_id.name.lower() in self.filtro_horario): # Filtro de agentes Horario
 						list_agentes.append(agente.id)
 
 						cant_leads = 0
@@ -117,10 +122,57 @@ class CrmLead(models.Model):
 							tasat_conv = 0
 
 						list_tasat_conv.append(tasat_conv)
-
+			# Lista con filtro 1 y 2
 			self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
+			# Final For lista filtro 1 y 2
+
+			# Leads Fuera de Horario y Feriados
+			if self.dic_agents == {}:
+				li_agentes = self.env['security.role'].browse(3).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
+
+				for agente in li_agentes:
+            
+					list_agentes.append(agente.id)
+
+					cant_leads = 0
+					tasa_conv = []
+
+					leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
+
+				for leads in leads_agent:
+
+					if (leads.type == 'lead'):
+						cant_leads += 1
+
+					tasa_conv.append(leads.probability)
+
+				list_cant_leads.append(cant_leads)
+            
+				try:
+					tasat_conv = sum(tasa_conv) / len(tasa_conv)
+
+				except:
+					tasat_conv = 0
+
+				list_tasat_conv.append(tasat_conv)
+
+				self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
 
 
+
+	def asigna_anterior(self):
+		
+		for i in self.dic_agents["Agente"]:
+				if i == viejo_lead():
+					agent = i
+					values.update({'user_id': self.viejo_lead()})					
+					break
+		if agent:
+			return True
+		else:
+			 return False		
+				
+		
 	def filtro_feriado(self):
 
 		feriados = FeriadosLatam.Feriados_Latam()
@@ -137,7 +189,7 @@ class CrmLead(models.Model):
 		salvador = feriados.salvador()
 		nicaragua = feriados.nicaragua()
 		venezuela = feriados.venezuela()
-		honduras = feriados.honduras())
+		honduras = feriados.honduras()
 
 		for i in mexico:
 			if fecha==i:
@@ -271,12 +323,6 @@ class CrmLead(models.Model):
 
 			#return agente
 
-		else:
-			agente = self.selec_agente()
-
-			##########
-			# Este 'else' es para colocar la funcion que se debe ejecutar en el caso de que el lead no haya sido atendido antes.
-			##########
 
 		return agente
 
