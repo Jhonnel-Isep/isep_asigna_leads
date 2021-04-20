@@ -1,4 +1,7 @@
 from odoo import models, api, fields
+import FeriadosLatam
+import datetime
+
 
 class CrmLead(models.Model):
 	_inherit = 'crm.lead'
@@ -15,6 +18,7 @@ class CrmLead(models.Model):
 		if not self.agente:
 			self.asigna_agente()
 			values.update({'user_id': self.viejo_lead()})
+
 
 		res = super(CrmLead, self).create(values)
 		return res
@@ -64,39 +68,62 @@ class CrmLead(models.Model):
 
 			for agente in li_agentes:
 
-				if not(agente.country_id.name.lower() in self.filtro_feriado()):
+				if not(agente.country_id.name.lower() in self.filtro_feriado()): # FIltrado de agentes feriados
+					if not(agente.country_id.name.lower() in self.filtro_horario):
+						list_agentes.append(agente.id)
 
-					list_agentes.append(agente.id)
+						cant_leads = 0
+						tasa_conv = []	
 
-					cant_leads = 0
-					tasa_conv = []
+						leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
 
-					leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
+						for leads in leads_agent:
+ 
+							if (leads.type == 'lead'):
+								cant_leads += 1
 
-					for leads in leads_agent:
+							tasa_conv.append(leads.probability)
 
-						if (leads.type == 'lead'):
-							cant_leads += 1
+						list_cant_leads.append(cant_leads)
 
-						tasa_conv.append(leads.probability)
+						try:
+							tasat_conv = sum(tasa_conv) / len(tasa_conv)
 
-					list_cant_leads.append(cant_leads)
+						except:
+							tasat_conv = 0
 
-					try:
-						tasat_conv = sum(tasa_conv) / len(tasa_conv)
+						list_tasat_conv.append(tasat_conv)
+					else:
+							list_agentes.append(agente.id)
 
-					except:
-						tasat_conv = 0
+						cant_leads = 0
+						tasa_conv = []	
 
-					list_tasat_conv.append(tasat_conv)
+						leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
+
+						for leads in leads_agent:
+ 
+							if (leads.type == 'lead'):
+								cant_leads += 1
+
+							tasa_conv.append(leads.probability)
+
+						list_cant_leads.append(cant_leads)
+
+						try:
+							tasat_conv = sum(tasa_conv) / len(tasa_conv)
+
+						except:
+							tasat_conv = 0
+
+						list_tasat_conv.append(tasat_conv)
 
 			self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
 
 
 	def filtro_feriado(self):
 
-		import datetime
-
+		feriados = FeriadosLatam.Feriados_Latam()
 		now = datetime.datetime.now()
 		dia = int(now.strftime("%d"))
 		mes = int(now.strftime("%m"))
@@ -105,10 +132,12 @@ class CrmLead(models.Model):
 
 		paises=[]
 		#mes, dia
-		mexico = [(1,1),(2,1),(3,15),(4,4),(5,1),(9,16),(11,15),(12,25)]
-		colombia = [(1,1),(1,11),(3,22),(5,1),(5,17),(6,7),(6,14),(7,5),(7,20),(8,7),(8,16),(10,18),(11,1),(11,15),(12,8),(12,25)]
-		salvador = [(1,1),(5,1),(5,10),(6,17),(8,5),(8,6),(9,15),(11,2),(12,25)]
-		nicaragua = [(1,1),(5,1),(7,19),(8,1),(8,10),(9,14),(9,15),(12,8),(12,25)]
+		mexico = feriados.mexico()
+		colombia = feriados.colombia()
+		salvador = feriados.salvador()
+		nicaragua = feriados.nicaragua()
+		venezuela = feriados.venezuela()
+		honduras = feriados.honduras())
 
 		for i in mexico:
 			if fecha==i:
@@ -122,13 +151,17 @@ class CrmLead(models.Model):
 		for i in nicaragua:
 			if fecha==i:
 				paises.append("nicaragua")
+		for i in venezuela:
+			if fecha==i:
+				paises.append("venezuela")
+		for i in honduras:
+			if fecha==i:
+				paises.append("honduras")
 
 		return paises
 
 
 	def filtro_horario(self):
-
-		import datetime
 
 		week = int(self.fecha_entrada.weekday())
 		hora = int(self.fecha_entrada.strftime('%H'))
