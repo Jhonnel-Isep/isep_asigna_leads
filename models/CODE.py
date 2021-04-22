@@ -28,9 +28,9 @@ class CrmLead(models.Model):
 		return res
 
 	def diccionario_agentes(self): # Filtro 1 y 2
-		list_agentes = []
-		list_cant_leads = []
-		list_tasat_conv = []
+		self.list_agentes = []
+		self.list_cant_leads = []
+		self.list_tasat_conv = []
 		dic_agents = {}
 
 		if (self.localidad == 68):
@@ -38,8 +38,8 @@ class CrmLead(models.Model):
 			li_agentes = self.env['security.role'].browse(2).user_ids ### --> COLOCAR EL ID DEL ROL DE ESPAÑA <-- ###
 
 			for agente in li_agentes:
-            
-				list_agentes.append(agente.id)
+
+				self.list_agentes.append(agente.id)
 
 				cant_leads = 0
 				tasa_conv = []
@@ -53,17 +53,17 @@ class CrmLead(models.Model):
 
 					tasa_conv.append(leads.probability)
 
-				list_cant_leads.append(cant_leads)
-            
+				self.list_cant_leads.append(cant_leads)
+
 				try:
 					tasat_conv = sum(tasa_conv) / len(tasa_conv)
 
 				except:
 					tasat_conv = 0
 
-				list_tasat_conv.append(tasat_conv)
+				self.list_tasat_conv.append(tasat_conv)
 
-			self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
+			self.dic_agents = {'Agente':self.list_agentes, 'Numero de Leads':self.list_cant_leads, 'Tasa de Conversion':self.list_tasat_conv}
 
 
 
@@ -75,7 +75,7 @@ class CrmLead(models.Model):
 
 				if not(agente.country_id.name.lower() in self.filtro_feriado()): # Filtrado de agentes feriados
 					if not(agente.country_id.name.lower() in self.filtro_horario): # Filtro de agentes Horario
-						list_agentes.append(agente.id)
+						self.list_agentes.append(agente.id)
 
 						cant_leads = 0
 						tasa_conv = []	
@@ -89,7 +89,7 @@ class CrmLead(models.Model):
 
 							tasa_conv.append(leads.probability)
 
-						list_cant_leads.append(cant_leads)
+						self.list_cant_leads.append(cant_leads)
 
 						try:
 							tasat_conv = sum(tasa_conv) / len(tasa_conv)
@@ -97,9 +97,9 @@ class CrmLead(models.Model):
 						except:
 							tasat_conv = 0
 
-						list_tasat_conv.append(tasat_conv)
+						self.list_tasat_conv.append(tasat_conv)
 					else:
-							list_agentes.append(agente.id)
+							self.list_agentes.append(agente.id)
 
 						cant_leads = 0
 						tasa_conv = []	
@@ -113,7 +113,7 @@ class CrmLead(models.Model):
 
 							tasa_conv.append(leads.probability)
 
-						list_cant_leads.append(cant_leads)
+						self.list_cant_leads.append(cant_leads)
 
 						try:
 							tasat_conv = sum(tasa_conv) / len(tasa_conv)
@@ -121,9 +121,9 @@ class CrmLead(models.Model):
 						except:
 							tasat_conv = 0
 
-						list_tasat_conv.append(tasat_conv)
+						self.list_tasat_conv.append(tasat_conv)
 			# Lista con filtro 1 y 2
-			self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
+			self.dic_agents = {'Agente':self.list_agentes, 'Numero de Leads':self.list_cant_leads, 'Tasa de Conversion':self.list_tasat_conv}
 			# Final For lista filtro 1 y 2
 
 			# Leads Fuera de Horario y Feriados
@@ -131,8 +131,8 @@ class CrmLead(models.Model):
 				li_agentes = self.env['security.role'].browse(3).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
 
 				for agente in li_agentes:
-            
-					list_agentes.append(agente.id)
+
+					self.list_agentes.append(agente.id)
 
 					cant_leads = 0
 					tasa_conv = []
@@ -146,17 +146,17 @@ class CrmLead(models.Model):
 
 					tasa_conv.append(leads.probability)
 
-				list_cant_leads.append(cant_leads)
-            
+				self.list_cant_leads.append(cant_leads)
+
 				try:
 					tasat_conv = sum(tasa_conv) / len(tasa_conv)
 
 				except:
 					tasat_conv = 0
 
-				list_tasat_conv.append(tasat_conv)
+				self.list_tasat_conv.append(tasat_conv)
 
-				self.dic_agents = {'Agente':list_agentes, 'Numero de Leads':list_cant_leads, 'Tasa de Conversion':list_tasat_conv}
+				self.dic_agents = {'Agente':self.list_agentes, 'Numero de Leads':self.list_cant_leads, 'Tasa de Conversion':self.list_tasat_conv}
 
 
 
@@ -260,21 +260,78 @@ class CrmLead(models.Model):
 	
 	def preferencia_pais(self):
 
+		# Traemos los agentes de 'list_agentes':
+		aux_agentes = self.list_agentes
+
+		# Traemos los agentes que se encuentran disponibles segun el pais desde el cual se esta creando el lead:
 		lead_pais = self.localidad
 		agen_pais = self.env['res.users'].search([('security_role_ids', '=', 'Ventas / Asesor'), ('country_id', '=', lead_pais)])
 
 		agentes_mismo_pais = []
-
 		for agentes in agen_pais:
 			agentes_mismo_pais.append(agentes.id)
 
-		if (len(agentes_mismo_pais) == 0):
-			##########
-			# Llamar a la siguiente condición (numero maximo de leads) y retornarle la lista de agentes anterior a este filtro
-			##########
 
+		# Guardamos solo las coincidencias que hay entre las listas: (agentes_mismo_pais) y (agentes_disponibles):
+		set_agentes_disponibles = set(aux_agentes)
+		set_agentes_mismo_pais = set(agentes_mismo_pais)
+
+
+		# Intersectamos los dos conjuntos para que se conserven las coincidencias:
+		coincidencias = set_agentes_disponibles & set_agentes_mismo_pais
+		
+		# Finalmente tenemos los agentes que se mantuvieron a pesar de pasar por el filtro:
+		agentes = list(coincidencias)
+
+		if (len(agentes) > 0):
+
+			indices = []
+			for agente in agentes:
+				indices.append(aux_agentes.index(agente))
+
+			self.list_agentes = agentes
+
+			tasa = []
+			cant = []
+			for indice in indices:
+				tasa.append(self.list_tasat_conv[indice])
+				cant.append(self.list_cant_leads[indice])
+
+			self.list_cant_leads = cant
+			self.list_tasat_conv = tasa
+
+
+	def area_agente(self):
+
+		# Incialmente se trae el area a la cual corresponde la iniciativa:
+		area_lead = self.area_lead
+
+		# Buscamos los agentes segun el area en el cual trabajan:
+		area_agent = self.env['res.users'].search([('NOMBRE DE LA VARIABLE', '=', area_lead)])
+		# Esto es para el caso en el cual en res.users se agrege el campo son esta el area del agente. 
+		# El NOMBRE DE LA VARIABLE (en OpenEduCat) es 'name' (model=op.area.course)
+
+		agentes_misma_area = []
+
+		for agentes in area_agent:
+			agentes_misma_area.append(agentes.id)
+
+		if (len(agentes_misma_area) == 0):
+			# Caso de lista vacia
+		
 		else:
-			return agentes_mismo_pais
+			return agentes_misma_area
+
+
+
+	def num_max_leads(self):
+
+		# Treamos el campo de la cantidad de leads maximos, la lista de agentes y la lista con la cantidad de leads por agente:
+		max_leads = self.max_leads
+		li_agentes = self.list_agentes
+		li_cant_leads = self.list_cant_leads
+
+		
 
 
 	
