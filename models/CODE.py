@@ -14,16 +14,16 @@ class CrmLead(models.Model):
 		self.localidad = values.get('country_id')
 		self.fecha_entrada = values.get('create_date')
 		# 68 = España, 
-
+	
 		if not self.agente:
 			self.diccionario_agentes()
-			if asigna_anterior() == False:
-				selec_agente()
-			
+			if self.asigna_anterior() == False: # Si no se asigna a un agente anterior
+				self.area_agente()
+				self.preferencia_pais()
+				self.num_max_leads()
+				values.update({'user_id': self.selec_agente()})	
 					
 			
-
-
 		res = super(CrmLead, self).create(values)
 		return res
 
@@ -99,7 +99,7 @@ class CrmLead(models.Model):
 
 						self.list_tasat_conv.append(tasat_conv)
 					else:
-							self.list_agentes.append(agente.id)
+						self.list_agentes.append(agente.id)
 
 						cant_leads = 0
 						tasa_conv = []	
@@ -330,8 +330,6 @@ class CrmLead(models.Model):
 		max_leads = self.max_leads
 		li_agentes = self.list_agentes
 		li_cant_leads = self.list_cant_leads
-
-		
 
 
 	
