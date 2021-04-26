@@ -300,36 +300,99 @@ class CrmLead(models.Model):
 			self.list_cant_leads = cant
 			self.list_tasat_conv = tasa
 
+			return True
+
+		else:
+
+			return False
+
 
 	def area_agente(self):
 
-		# Incialmente se trae el area a la cual corresponde la iniciativa:
-		area_lead = self.area_lead
+		# Traemos a los agentesde la lista de agentes del diccionario:
+		aux_agentes = self.list_agentes
 
-		# Buscamos los agentes segun el area en el cual trabajan:
+		# Traemos a todos los agentes los cuales se encuentran en el area del agente:
+		area_lead = self.area_lead
 		area_agent = self.env['res.users'].search([('NOMBRE DE LA VARIABLE', '=', area_lead)])
-		# Esto es para el caso en el cual en res.users se agrege el campo son esta el area del agente. 
-		# El NOMBRE DE LA VARIABLE (en OpenEduCat) es 'name' (model=op.area.course)
+		
 
 		agentes_misma_area = []
+		for agente in area_agent:
+			agentes_misma_area.append(agente.id)
 
-		for agentes in area_agent:
-			agentes_misma_area.append(agentes.id)
+		coincidencias = list( set(aux_agentes) & set(agentes_misma_area) )
 
-		if (len(agentes_misma_area) == 0):
-			# Caso de lista vacia
+		if (len(coincidencias) > 0):
+			
+			indices = []
+			for agente in coincidencias:
+				indices.append(aux_agentes.index(agente))
+
+			self.list_agentes = coincidencias
+
+			tasa = []
+			cant = []
+			for indice in indices:
+				tasa.append(self.list_tasat_conv[indice])
+				cant.append(self.list_cant_leads[indice])
+
+			self.list_cant_leads = cant
+			self.list_tasat_conv = tasa
+
+			return True
 		
 		else:
-			return agentes_misma_area
+			return False
 
 
 
 	def num_max_leads(self):
 
-		# Treamos el campo de la cantidad de leads maximos, la lista de agentes y la lista con la cantidad de leads por agente:
-		max_leads = self.max_leads
+		# SUPONIENDO QUE LA VARIBLE DE LA CANTIDAD MAXIMA DE LEADS ES: "max_leads".
+
 		li_agentes = self.list_agentes
 		li_cant_leads = self.list_cant_leads
+		li_tasat_conv = self.list_tasat_conv
+
+		cant_max_leads = []
+		for agente in li_agentes:
+			agent = slef.env['res.users'].browse(agente)
+			cant_max_leads.append(agent.max_leads)
+
+		macro_list = []
+		# macro_list = [[agentes 1, cantidad de leads 1, cantidad maxima de leads 1], [... 2, ... 2, ...2]]
+
+		for i in range(len(li_cant_leads)):
+			aux_list = []
+
+			aux_list.append(li_agentes[i])			
+			aux_list.append(li_cant_leads[i])
+			aux_list.append(cant_max_leads[i])
+
+			macro_list.append(aux_list)
+
+		agentes = []
+		tasas = []
+		cantidades = []
+		for i in macro_list:
+				
+			if (i[1] < i[2]):
+				agentes.append(i[0])
+				indice = li_agentes.index(i[0])
+				tasas.append(li_tasat_conv[indice])
+				cantidades.append(li_cant_leads[indice])
+
+		if (len(agentes) > 0):
+			self.list_agentes = agentes
+			self.list_cant_leads = cantidades
+			self.list_tasat_conv = tasas
+
+			return True
+
+		else:
+
+			return False	
 
 
 	
