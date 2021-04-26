@@ -3,11 +3,11 @@
 from odoo import models, fields, api, exceptions, _
 
 class AtribAgentes(models.Model):
-    _name = ''
+    _name = 'atrb_agentes'
     _description = 'Formulario agentes'
 
-    name = fields.Char(
-        string=''
+    agente = fields.Char(
+        string='' # agentes
     )
     vacaciones_inicio = fields.Date(
         string='Vacaciones inicio'
@@ -15,14 +15,17 @@ class AtribAgentes(models.Model):
     Vacaciones_fin = fields.Date(
         string='Vacaciones fin'
     )
-    zona_horaria = max_leads = fields.Integer(
-        string="Leads Maximos",
-        required=False
-        )
-   Horario_laboral = fields.Selection([
+   
+    horario_laboral = fields.Selection([
         ('9-17'),
         ('7-15')
     ], '')
+
+    area_curso = fields.Selection([
+        ('psicologia'),
+        ('otra')
+    ], '')
+
 
     max_leads = fields.Integer(
         string="Leads Maximos",
@@ -30,4 +33,4 @@ class AtribAgentes(models.Model):
         required=False
         )
     
-   
+# Extender los atributos de los roles? o agregar el segmento de roles en este modelo?
