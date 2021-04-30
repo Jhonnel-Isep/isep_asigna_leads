@@ -1,5 +1,5 @@
 from odoo import models, api, fields
-import FeriadosLatam
+from .FeriadosLatam import Feriados_Latam
 import datetime
 
 
@@ -8,225 +8,206 @@ class CrmLead(models.Model):
 
 	@api.model
 	def create(self, values):
-		self.agente = values.get('user_id')
-		self.telf = values.get('phone')
-		self.mail = values.get('email_from')
-		self.localidad = values.get('country_id')
+		self.agente 	   = values.get('user_id')
+		self.telf 		   = values.get('phone')
+		self.mail 		   = values.get('email_from')
+		self.localidad 	   = values.get('country_id')
 		self.fecha_entrada = values.get('create_date')
-		# 68 = España, 
-	
+		self.area_lead = values.get('x_area_id')	
+
+		# Main - Ejecucion de filtros
 		if not self.agente:
-			self.diccionario_agentes()
-			if self.asigna_anterior() == False: # Si no se asigna a un agente anterior
-				self.area_agente()
-				self.preferencia_pais()
-				self.num_max_leads()
-				values.update({'user_id': self.selec_agente()})	
-					
-			
+
+			if self.localidad == 68:
+				espana = self.env['security.role'].browse(2).user_ids
+				self.agentes = diccionario_agentes(espana) 
+			else:
+				latam = self.env['security.role'].browse(3).user_ids
+				self.agentes = diccionario_agentes(latam)
+
+			# Primera etapa de filtrado
+			vacaciones_status = filtro_vacaciones()
+			feriado_status    = filtro_feriado()
+			horario_status    = filtro_horario()
+
+			# Asignacion de agente caso 1
+			anterior_status   = asigna_anterior_agente()
+
+			# Segunda etapa de filtrado
+			if anterior_status == False: 
+				area_status 			= filtro_area_agente()
+				preferencia_pais_status = filtro_preferencia_pais()
+				max_lead_status 		= filtro_num_max_leads()
+
+				# Asignacion de agente caso 2
+				values.update({'user_id': asigna_nuevo_agente()})	
+
+		# Pasar info al log
+		attrs = {
+			# Primera etapa filtrado
+			'agente_lead'                 : values.get('user_id'),
+    		'pais_lead' 				  : values.get('country_id'), 
+    		'filtro_vacaciones'			  : vacaciones_status,
+			'filtro_feriado'			  : feriado_status,
+			'filtro_horario' 			  : horario_status,
+			'filtro_atendido_previamente' : anterior_status,
+			# Segunda etapa filtrado
+			'filtro_area_curso' : area_status,
+			'filtro_pais' 		: preferencia_pais_status,
+    		'filtro_max_lead'   : max_lead_status
+		}
+
+		self.env['lead.logs'].self.AutoLeadLogRegister(attrs)	
+		# Fin pasar info al log
+
 		res = super(CrmLead, self).create(values)
 		return res
+	
+	def diccionario_agentes(self, li_agentes):
+		list_agentes    = []
+		list_cant_leads = []
+		list_tasat_conv = []
+		dic_agents      = {}
 
-	def diccionario_agentes(self): # Filtro 1 y 2
-		self.list_agentes = []
-		self.list_cant_leads = []
-		self.list_tasat_conv = []
-		dic_agents = {}
+		for agente in li_agentes:
 
-		if (self.localidad == 68):
+			list_agentes.append(agente.id)
+			cant_leads  = 0
+			tasa_conv   = []
+			leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
 
-			li_agentes = self.env['security.role'].browse(2).user_ids ### --> COLOCAR EL ID DEL ROL DE ESPAÑA <-- ###
+			for leads in leads_agent:
 
-			for agente in li_agentes:
+				if (leads.type == 'lead'):
+					cant_leads += 1
 
-				self.list_agentes.append(agente.id)
+				tasa_conv.append(leads.probability)
 
-				cant_leads = 0
-				tasa_conv = []
+			list_cant_leads.append(cant_leads)
 
-				leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
+			try:
+				tasat_conv = sum(tasa_conv) / len(tasa_conv)
 
-				for leads in leads_agent:
+			except:
+				tasat_conv = 0
 
-					if (leads.type == 'lead'):
-						cant_leads += 1
-
-					tasa_conv.append(leads.probability)
-
-				self.list_cant_leads.append(cant_leads)
-
-				try:
-					tasat_conv = sum(tasa_conv) / len(tasa_conv)
-
-				except:
-					tasat_conv = 0
-
-				self.list_tasat_conv.append(tasat_conv)
-
-			self.dic_agents = {'Agente':self.list_agentes, 'Numero de Leads':self.list_cant_leads, 'Tasa de Conversion':self.list_tasat_conv}
-
-
-
-		else:
-
-			li_agentes = self.env['security.role'].browse(3).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
-
-			for agente in li_agentes:
-
-				if not(agente.country_id.name.lower() in self.filtro_feriado()): # Filtrado de agentes feriados
-					if not(agente.country_id.name.lower() in self.filtro_horario): # Filtro de agentes Horario
-						self.list_agentes.append(agente.id)
-
-						cant_leads = 0
-						tasa_conv = []	
-
-						leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
-
-						for leads in leads_agent:
- 
-							if (leads.type == 'lead'):
-								cant_leads += 1
-
-							tasa_conv.append(leads.probability)
-
-						self.list_cant_leads.append(cant_leads)
-
-						try:
-							tasat_conv = sum(tasa_conv) / len(tasa_conv)
-
-						except:
-							tasat_conv = 0
-
-						self.list_tasat_conv.append(tasat_conv)
-					else:
-						self.list_agentes.append(agente.id)
-
-						cant_leads = 0
-						tasa_conv = []	
-
-						leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
-
-						for leads in leads_agent:
- 
-							if (leads.type == 'lead'):
-								cant_leads += 1
-
-							tasa_conv.append(leads.probability)
-
-						self.list_cant_leads.append(cant_leads)
-
-						try:
-							tasat_conv = sum(tasa_conv) / len(tasa_conv)
-
-						except:
-							tasat_conv = 0
-
-						self.list_tasat_conv.append(tasat_conv)
-			# Lista con filtro 1 y 2
-			self.dic_agents = {'Agente':self.list_agentes, 'Numero de Leads':self.list_cant_leads, 'Tasa de Conversion':self.list_tasat_conv}
-			# Final For lista filtro 1 y 2
-
-			# Leads Fuera de Horario y Feriados
-			if self.dic_agents == {}:
-				li_agentes = self.env['security.role'].browse(3).user_ids ### --> COLOCAR EL ID DEL ROL DE LATAM <-- ###
-
-				for agente in li_agentes:
-
-					self.list_agentes.append(agente.id)
-
-					cant_leads = 0
-					tasa_conv = []
-
-					leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
-
-				for leads in leads_agent:
-
-					if (leads.type == 'lead'):
-						cant_leads += 1
-
-					tasa_conv.append(leads.probability)
-
-				self.list_cant_leads.append(cant_leads)
-
-				try:
-					tasat_conv = sum(tasa_conv) / len(tasa_conv)
-
-				except:
-					tasat_conv = 0
-
-				self.list_tasat_conv.append(tasat_conv)
-
-				self.dic_agents = {'Agente':self.list_agentes, 'Numero de Leads':self.list_cant_leads, 'Tasa de Conversion':self.list_tasat_conv}
-
-
-
-	def asigna_anterior(self):
+			list_tasat_conv.append(tasat_conv)
 		
-		for i in self.dic_agents["Agente"]:
-				if i == viejo_lead():
-					agent = i
-					values.update({'user_id': self.viejo_lead()})					
-					break
-		if agent:
-			return True
-		else:
-			 return False		
-				
-		
-	def filtro_feriado(self):
+		# Diccionario base de agentes
+		dic_agents = {
+			'Agente'		 	 : self.list_agentes, 
+			'Numero de Leads'    : self.list_cant_leads, 
+			'Tasa de Conversion' : self.list_tasat_conv
+			}
 
-		feriados = FeriadosLatam.Feriados_Latam()
+		return dic_agents
+		
+	def filtro_vacaciones(self):
 		now = datetime.datetime.now()
 		dia = int(now.strftime("%d"))
 		mes = int(now.strftime("%m"))
+		fecha_actual = (mes,dia)
 
-		fecha = (mes, dia)
+		# Traemos a los agentes de la lista de agentes del diccionario:
+		aux_list_agentes 	= self.list_agentes
+		aux_list_cant_leads = self.list_cant_leads
+		aux_list_tasat_conv = self.list_tasat_conv
 
-		paises=[]
-		#mes, dia
-		mexico = feriados.mexico()
-		colombia = feriados.colombia()
-		salvador = feriados.salvador()
-		nicaragua = feriados.nicaragua()
-		venezuela = feriados.venezuela()
-		honduras = feriados.honduras()
+		foo=0
+		
+		for  i in self.list_agentes:
 
-		for i in mexico:
-			if fecha==i:
-				paises.append("mexico")
-		for i in colombia:
-			if fecha==i:
-				paises.append("colombia")
-		for i in salvador:
-			if fecha==i:
-				paises.append("el salvador")
-		for i in nicaragua:
-			if fecha==i:
-				paises.append("nicaragua")
-		for i in venezuela:
-			if fecha==i:
-				paises.append("venezuela")
-		for i in honduras:
-			if fecha==i:
-				paises.append("honduras")
+			vacaciones = self.env['atributos.agentes'].search([('agente_name', '=', i)])
 
-		return paises
+			inicio_vacaciones = (int(vacaciones.vacaciones_inicio.strftime("%m")), int(vacaciones.vacaciones_inicio.strftime("%d")))
+			fin_vacaciones = (int(vacaciones.vacaciones_fin.strftime("%m")), int(vacaciones.vacaciones_fin.strftime("%d")))
 
+			if fecha_actual[1]>=inicio_vacaciones[1] and fecha_actual[0] == inicio_vacaciones[0] or fecha_actual[0]>inicio_vacaciones[0] and fecha_actual[0] <= fin_vacaciones[0]:
+				del aux_list_agentes[foo]
+				del aux_list_cant_leads[foo]
+				del aux_list_tasat_conv[foo]
+			foo += 1
+		
+		# Filtrado
+		if len(aux_list_agentes)>0:
+			self.list_agentes 	 = aux_list_agentes
+			self.list_cant_leads = aux_list_cant_leads
+			self.list_tasat_conv = aux_list_tasat_conv
+			return True
+		else:
+			return False
+
+	def filtro_feriado(self):
+
+		feriados = FeriadosLatam.FeriadosLatam()
+		now = datetime.datetime.now()
+		dia = int(now.strftime("%d"))
+		mes = int(now.strftime("%m"))
+		fecha  = (mes, dia) 
+		foo= 0
+		paises = []
+		aux_list_agentes 	= self.list_agentes
+		aux_list_cant_leads = self.list_cant_leads
+		aux_list_tasat_conv = self.list_tasat_conv
+
+		feriados_mexico    = feriados.mexico()
+		feriados_colombia  = feriados.colombia()
+		feriados_salvador  = feriados.salvador()
+		feriados_nicaragua = feriados.nicaragua()
+		feriados_venezuela = feriados.venezuela()
+		feriados_honduras  = feriados.honduras()
+
+		for i in feriados_mexico:
+			if fecha==i:
+				paises.append(156)
+		for i in feriados_colombia:
+			if fecha==i:
+				paises.append(49)
+		for i in feriados_salvador:
+			if fecha==i:
+				paises.append(209)
+		for i in feriados_nicaragua:
+			if fecha==i:
+				paises.append(164)
+		for i in feriados_venezuela:
+			if fecha==i:
+				paises.append(238)
+		for i in feriados_honduras:
+			if fecha==i:
+				paises.append(299)
+
+		for i in aux_list_agentes:
+
+			pais_agente = self.env['res.users'].browse(i).country_id.id
+
+			if  pais_agente in paises:
+				del aux_list_agentes[foo]
+				del aux_list_cant_leads[foo]
+				del aux_list_tasat_conv[foo]
+			foo+=1
+
+		# Filtrado
+		if len(aux_list_agentes)>0:
+			self.list_agentes 	 = aux_list_agentes
+			self.list_cant_leads = aux_list_cant_leads
+			self.list_tasat_conv = aux_list_tasat_conv
+			return True		
+		else:
+			return False
 
 	def filtro_horario(self):
-
-		week = int(self.fecha_entrada.weekday())
+		semana = int(self.fecha_entrada.weekday())
 		hora = int(self.fecha_entrada.strftime('%H'))
 		minu = int(self.fecha_entrada.strftime('%M'))
 
 		paises = []
 
-		if (hora-4 in range(9,17)) and (week in range(4)):
+		if (hora-4 in range(9,17)) and (semana in range(4)):
 			paises.append('venezuela')
 
 
-		if (hora-5 in range(9,17)) and (week in range(5)):
-			if (week == 5):
+		if (hora-5 in range(9,17)) and (semana in range(5)):
+			if (semana == 5):
 				if (hora-5 < 12):
 					paises.append('colombia')
 					paises.append('mexico (cdmx)')
@@ -237,8 +218,8 @@ class CrmLead(models.Model):
 				paises.append('mexico (cdmx)')
 
 
-		if (hora-6 in range(9,17)) and (week in range(5)):
-			if (week == 5):
+		if (hora-6 in range(9,17)) and (semana in range(5)):
+			if (semana == 5):
 				paises.append('mexico (la paz)')
 			else:
 				paises.append('nicaragua')
@@ -246,19 +227,120 @@ class CrmLead(models.Model):
 				paises.append('mexico (la paz)')
 
 
-		if (hora-7 in range(9,17)) and (week in range(5)):
+		if (hora-7 in range(9,17)) and (semana in range(5)):
 			paises.append('tijuana')
 
 
 		if (len(paises) == 0):
 			self.viejo_lead()
-
+			self.horario_status = False
 		else:
+			self.horario_status = True
 			return paises
+				
+
+	def viejo_lead(self):
+
+		aux = False
+		aux2 = False
+		todos_leads = self.env['crm.lead'].search([])
+
+		telefonos = []
+		emails = []
+		agentes = []
+
+		for lead in todos_leads:
+			telefonos.append(lead.phone)
+			emails.append(lead.email_from)
+			agentes.append(lead.x_contactonuevoodup12) 
+			# CAMPO "ACTUAL": x_contactonuevoodup12
+			# Campo usado para pruebas en local: user_id
+
+		li_todos_leads = [telefonos, emails, agentes]
+			
+		for telf in li_todos_leads[0]:
+			if (self.telf == telf) and (self.telf != False):
+				aux2 = True
+				aux = False
+				aux_indice = li_todos_leads[0].index(telf)
+				aux_agente =  li_todos_leads[2][aux_indice].id
+				break
+
+			else:
+				aux = True
+			
+
+		if (aux == True):
+
+			for mail in li_todos_leads[1]:
+				if (self.mail == mail) and (self.mail != False):
+					aux2 = True
+					aux_indice = li_todos_leads[1].index(mail)
+					aux_agente =  li_todos_leads[2][aux_indice].id
+					
+					break
+
+		if (aux2 == True):
+			indice = aux_indice
+			agente = aux_agente
+
+			#return agente
+
+		return agente
+
+	def asigna_anterior_agente(self):
+		
+		for i in self.dic_agents["Agente"]:
+				if i == viejo_lead():
+					agent = i
+					values.update({'user_id': self.viejo_lead()})					
+					break
+		if agent:
+			return True
+		else:
+			 return False		
 
 
 	
-	def preferencia_pais(self):
+	def filtro_area_agente(self):
+
+		# Traemos a los agentes de la lista de agentes del diccionario:
+		aux_agentes = self.list_agentes
+
+		# Traemos a todos los agentes los cuales se encuentran en el area del agente:
+		area_lead = self.area_lead
+		area_agent = self.env['atributos.agentes'].search([('area_curso', '=', area_lead)])
+		
+
+		agentes_misma_area = []
+		for agente in area_agent:
+			agentes_misma_area.append(agente.agente_name.id)
+
+		coincidencias = list( set(aux_agentes) & set(agentes_misma_area) )
+
+		if (len(coincidencias) > 0):
+			
+			indices = []
+			for agente in coincidencias:
+				indices.append(aux_agentes.index(agente))
+
+			self.list_agentes = coincidencias
+
+			tasa = []
+			cant = []
+			for indice in indices:
+				tasa.append(self.list_tasat_conv[indice])
+				cant.append(self.list_cant_leads[indice])
+
+			self.list_cant_leads = cant
+			self.list_tasat_conv = tasa
+
+			return True
+		
+		else:
+			return False
+	
+	def filtro_preferencia_pais(self):
 
 		# Traemos los agentes de 'list_agentes':
 		aux_agentes = self.list_agentes
@@ -307,49 +389,7 @@ class CrmLead(models.Model):
 			return False
 
 
-	def area_agente(self):
-
-		# Traemos a los agentesde la lista de agentes del diccionario:
-		aux_agentes = self.list_agentes
-
-		# Traemos a todos los agentes los cuales se encuentran en el area del agente:
-		area_lead = self.area_lead
-		area_agent = self.env['res.users'].search([('NOMBRE DE LA VARIABLE', '=', area_lead)])
-		
-
-		agentes_misma_area = []
-		for agente in area_agent:
-			agentes_misma_area.append(agente.id)
-
-		coincidencias = list( set(aux_agentes) & set(agentes_misma_area) )
-
-		if (len(coincidencias) > 0):
-			
-			indices = []
-			for agente in coincidencias:
-				indices.append(aux_agentes.index(agente))
-
-			self.list_agentes = coincidencias
-
-			tasa = []
-			cant = []
-			for indice in indices:
-				tasa.append(self.list_tasat_conv[indice])
-				cant.append(self.list_cant_leads[indice])
-
-			self.list_cant_leads = cant
-			self.list_tasat_conv = tasa
-
-			return True
-		
-		else:
-			return False
-
-
-
 	def num_max_leads(self):
-
-		# SUPONIENDO QUE LA VARIBLE DE LA CANTIDAD MAXIMA DE LEADS ES: "max_leads".
 
 		li_agentes = self.list_agentes
 		li_cant_leads = self.list_cant_leads
@@ -357,10 +397,12 @@ class CrmLead(models.Model):
 
 		cant_max_leads = []
 		for agente in li_agentes:
-			agent = slef.env['res.users'].browse(agente)
-			cant_max_leads.append(agent.max_leads)
+			atrb_agente = self.env['atributos.agentes'].search([('agente_name', '=', agente)])
+			cant_max_leads.append(atrb_agente.max_leads)
 
 		macro_list = []
+
+		# FORMATO MACRO_LIST:
 		# macro_list = [[agentes 1, cantidad de leads 1, cantidad maxima de leads 1], [... 2, ... 2, ...2]]
 
 		for i in range(len(li_cant_leads)):
@@ -395,58 +437,7 @@ class CrmLead(models.Model):
 			return False	
 
 
-	
-	def viejo_lead(self):
-
-		aux = False
-		aux2 = False
-		todos_leads = self.env['crm.lead'].search([])
-
-		telefonos = []
-		emails = []
-		agentes = []
-
-		for lead in todos_leads:
-			telefonos.append(lead.phone)
-			emails.append(lead.email_from)
-			agentes.append(lead.user_id) ### --> COLOCAR EL FIELD DE "ACTUAL" <-- ###
-
-		li_todos_leads = [telefonos, emails, agentes]
-			
-		for telf in li_todos_leads[0]:
-			if (self.telf == telf) and (self.telf != False):
-				aux2 = True
-				aux = False
-				aux_indice = li_todos_leads[0].index(telf)
-				aux_agente =  li_todos_leads[2][aux_indice].id
-				break
-
-			else:
-				aux = True
-			
-
-		if (aux == True):
-
-			for mail in li_todos_leads[1]:
-				if (self.mail == mail) and (self.mail != False):
-					aux2 = True
-					aux_indice = li_todos_leads[1].index(mail)
-					aux_agente =  li_todos_leads[2][aux_indice].id
-					
-					break
-
-		if (aux2 == True):
-			indice = aux_indice
-			agente = aux_agente
-
-			#return agente
-
-
-		return agente
-
-
-
-	def selec_agente(self):
+	def asigna_nuevo_agente(self):
 
 		menor=10000
 		lista=[]
@@ -471,5 +462,4 @@ class CrmLead(models.Model):
 
 		agente = lista[index-1]
 
-
-	return agente
+		return agente

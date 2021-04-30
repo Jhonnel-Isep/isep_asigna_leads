@@ -23,5 +23,7 @@
 #
 ##############################################################################
 
-#from . import grupo_agentes
 from . import CODE
+from . import AtributosAgentes
+from . import FeriadosLatam
+from . import AutoLeadLogRegister
