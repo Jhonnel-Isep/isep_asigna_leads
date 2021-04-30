@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+	<data>
+
+		<record id="view_atributos_agente_tree" model="ir.ui.view">
+			<field name="name">atributos.agentes.tree</field>
+			<field name="model">atributos.agentes</field>
+			<field name="priority" eval="8" />
+
+			<field name="arch" type="xml">
+				<tree string="Atributos Agentes">
+					<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+					<field name="vacaciones_inicio" />
+					<field name="vacaciones_fin" />
+					<field name="horario_laboral" />
+					<field name="area_curso" />
+					<field name="max_leads" />
+				</tree>
+			</field>
+		</record>
+
+
+
+		<record id="view_atributos_agente_form" model="ir.ui.view">
+			<field name="name">atributos.agentes.form</field>
+			<field name="model">atributos.agentes</field>
+			<field name="priority" eval="8" />
+
+			<field name="arch" type="xml">
+				<form string="Atributos Agentes">
+					<sheet>
+						<group col="4">
+							<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+							<field name="vacaciones_inicio" />
+							<field name="vacaciones_fin" />
+							<field name="horario_laboral" />
+							<field name="area_curso" />
+							<field name="max_leads" />
+						</group>
+					</sheet>
+				</form>
+			</field>
+		</record>
+
+
+
+		<record id="view_atributos_agente_search" model="ir.ui.view">
+			<field name="name">atributos.agentes.search</field>
+			<field name="model">atributos.agentes</field>
+			<field name="priority" eval="8" />
+
+			<field name="arch" type="xml">
+				<search string="Atributos Agentes">
+					<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+					<field name="vacaciones_inicio" />
+					<field name="vacaciones_fin" />
+					<field name="horario_laboral" />
+					<field name="area_curso" />
+					<field name="max_leads" />
+					<newline />
+				</search>
+			</field>
+		</record>
+
+
+		<record id="act_atributos_agente_view" model="ir.actions.act_window">
+			<field name="name">Atributos Agentes</field>
+			<field name="type">ir.actions.act_window</field>
+			<field name="res_model">atributos.agentes</field>
+			<field name="view_type">form</field>
+			<field name="view_mode">tree,form</field>
+
+			<field name="search_view_id" ref="view_atributos_agente_search" />
+
+			<field name="domain">[]</field>
+			<field name="context">{}</field>
+		</record>
+
+
+		<record id="act_atributos_agente_view_form" model="ir.actions.act_window.view">
+			<field name="act_window_id" ref="act_atributos_agente_view" />
+			<field name="sequence" eval="20" />
+			<field name="view_mode">form</field>
+			<field name="view_id" ref="view_atributos_agente_form" />
+		</record>
+
+
+		<record id="act_atributos_agente_view_tree" model="ir.actions.act_window.view">
+			<field name="act_window_id" ref="act_atributos_agente_view" />
+			<field name="sequence" eval="10" />
+			<field name="view_mode">tree</field>
+			<field name="view_id" ref="view_atributos_agente_tree" />			
+		</record>
+
+	</data>
+</odoo>

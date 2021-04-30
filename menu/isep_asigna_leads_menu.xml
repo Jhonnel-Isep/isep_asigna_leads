@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<odoo>
+	<data>
+		
+		<menuitem 
+			id="menu_asigna_leads" 
+			name="Asignación de Iniciativas"
+			parent="crm.crm_menu_root"
+			sequence="10"
+		/>
+
+		<menuitem 
+			id="menu_asigna_leads_config_atributos" 
+			name="Atributos Agentes"
+			parent="menu_asigna_leads"
+			sequence="11"
+			action="act_atributos_agente_view"
+			groups=""
+		/>
+
+		<menuitem 
+			id="menu_asigna_leads_config_log" 
+			name="Log de Asignación"
+			parent="menu_asigna_leads"
+			sequence="12"
+			action="act_log_register_view"
+			groups=""
+		/>
+
+	</data>
+</odoo>
