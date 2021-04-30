@@ -6,6 +6,7 @@
     'depends': [
         'base', 
         'crm', 
+        'sales_team', 
         'security_user_roles'
     ],
     
