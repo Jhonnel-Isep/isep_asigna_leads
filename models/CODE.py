@@ -1,5 +1,6 @@
 from odoo import models, api, fields
-from .FeriadosLatam import Feriados_Latam
+from .FeriadosLatam import FeriadosLatam
+from .AutoLeadLogRegister import AutoLeadLogRegister
 import datetime
 
 
@@ -8,70 +9,72 @@ class CrmLead(models.Model):
 
 	@api.model
 	def create(self, values):
-		self.agente 	   = values.get('user_id')
-		self.telf 		   = values.get('phone')
-		self.mail 		   = values.get('email_from')
-		self.localidad 	   = values.get('country_id')
-		self.fecha_entrada = values.get('create_date')
-		self.area_lead = values.get('x_area_id')	
+		self.agente        = values.get('user_id')
+		self.telf          = values.get('phone')
+		self.mail          = values.get('email_from')
+		self.localidad     = values.get('country_id')
+		self.fecha_entrada = values.get('date_open')
+		self.area_lead 	   = values.get('x_area_id')	
 
 		# Main - Ejecucion de filtros
 		if not self.agente:
 
 			if self.localidad == 68:
-				espana = self.env['security.role'].browse(2).user_ids
-				self.agentes = diccionario_agentes(espana) 
+				espana 		 = self.env['security.role'].browse(2).user_ids
+				self.agentes = self.diccionario_agentes(espana) 
 			else:
-				latam = self.env['security.role'].browse(3).user_ids
-				self.agentes = diccionario_agentes(latam)
+				latam 		 = self.env['security.role'].browse(3).user_ids
+				self.agentes = self.diccionario_agentes(latam)
 
 			# Primera etapa de filtrado
-			vacaciones_status = filtro_vacaciones()
-			feriado_status    = filtro_feriado()
-			horario_status    = filtro_horario()
+			vacaciones_status = self.filtro_vacaciones()
+			feriado_status 	  = self.filtro_feriado()
+			horario_status    = self.filtro_horario()
 
 			# Asignacion de agente caso 1
-			anterior_status   = asigna_anterior_agente()
+			anterior_status   = self.asigna_anterior_agente()
+
+			attrs = {
+				# Primera etapa filtrado
+				'agente_lead'      :values.get('user_id'),
+				'pais_lead'        :values.get('country_id'), 
+				'filtro_vacaciones'          : vacaciones_status,
+				'filtro_feriado'             : feriado_status,
+				'filtro_horario'             : horario_status,
+				'filtro_atendido_previamente': anterior_status
+			}
 
 			# Segunda etapa de filtrado
 			if anterior_status == False: 
-				area_status 			= filtro_area_agente()
-				preferencia_pais_status = filtro_preferencia_pais()
-				max_lead_status 		= filtro_num_max_leads()
+				area_status 		    = self.filtro_area_agente()
+				preferencia_pais_status = self.filtro_preferencia_pais()
+				max_lead_status         = self.filtro_num_max_leads()
 
 				# Asignacion de agente caso 2
-				values.update({'user_id': asigna_nuevo_agente()})	
+				values.update({'user_id': self.asigna_nuevo_agente()})
 
-		# Pasar info al log
-		attrs = {
-			# Primera etapa filtrado
-			'agente_lead'                 : values.get('user_id'),
-    		'pais_lead' 				  : values.get('country_id'), 
-    		'filtro_vacaciones'			  : vacaciones_status,
-			'filtro_feriado'			  : feriado_status,
-			'filtro_horario' 			  : horario_status,
-			'filtro_atendido_previamente' : anterior_status,
-			# Segunda etapa filtrado
-			'filtro_area_curso' : area_status,
-			'filtro_pais' 		: preferencia_pais_status,
-    		'filtro_max_lead'   : max_lead_status
-		}
+				attrs['filtro_area_curso'] = area_status
+				attrs['filtro_pais']       = preferencia_pais_status
+				attrs['filtro_max_lead']   = max_lead_status	
 
-		self.env['lead.logs'].self.AutoLeadLogRegister(attrs)	
-		# Fin pasar info al log
+			#log = super(CrmLead, self).create(attrs)
+
+			self.env['lead.logs'].create(attrs)
+			# Fin pasar info al log
 
 		res = super(CrmLead, self).create(values)
 		return res
-	
+
+
 	def diccionario_agentes(self, li_agentes):
-		list_agentes    = []
-		list_cant_leads = []
-		list_tasat_conv = []
-		dic_agents      = {}
+		self.list_agentes    = []
+		self.list_cant_leads = []
+		self.list_tasat_conv = []
+		self.dic_agents      = {}
 
 		for agente in li_agentes:
 
-			list_agentes.append(agente.id)
+			self.list_agentes.append(agente.id)
 			cant_leads  = 0
 			tasa_conv   = []
 			leads_agent = self.env['crm.lead'].search([('user_id', '=', agente.id)])
@@ -83,7 +86,7 @@ class CrmLead(models.Model):
 
 				tasa_conv.append(leads.probability)
 
-			list_cant_leads.append(cant_leads)
+			self.list_cant_leads.append(cant_leads)
 
 			try:
 				tasat_conv = sum(tasa_conv) / len(tasa_conv)
@@ -91,21 +94,21 @@ class CrmLead(models.Model):
 			except:
 				tasat_conv = 0
 
-			list_tasat_conv.append(tasat_conv)
+			self.list_tasat_conv.append(tasat_conv)
 		
 		# Diccionario base de agentes
-		dic_agents = {
+		self.dic_agents = {
 			'Agente'		 	 : self.list_agentes, 
 			'Numero de Leads'    : self.list_cant_leads, 
 			'Tasa de Conversion' : self.list_tasat_conv
 			}
 
-		return dic_agents
+		return self.dic_agents
 		
 	def filtro_vacaciones(self):
-		now = datetime.datetime.now()
-		dia = int(now.strftime("%d"))
-		mes = int(now.strftime("%m"))
+		now 	     = datetime.datetime.now()
+		dia 		 = int(now.strftime("%d"))
+		mes 		 = int(now.strftime("%m"))
 		fecha_actual = (mes,dia)
 
 		# Traemos a los agentes de la lista de agentes del diccionario:
@@ -115,37 +118,49 @@ class CrmLead(models.Model):
 
 		foo=0
 		
-		for  i in self.list_agentes:
+		for agente in self.list_agentes:
 
-			vacaciones = self.env['atributos.agentes'].search([('agente_name', '=', i)])
+			vacaciones = self.env['atributos.agentes'].search([('agente_name', '=', agente)])
 
-			inicio_vacaciones = (int(vacaciones.vacaciones_inicio.strftime("%m")), int(vacaciones.vacaciones_inicio.strftime("%d")))
-			fin_vacaciones = (int(vacaciones.vacaciones_fin.strftime("%m")), int(vacaciones.vacaciones_fin.strftime("%d")))
+			if (vacaciones.vacaciones_inicio != False) or (vacaciones.vacaciones_fin != False):
+				inicio_vacaciones = (
+					int(vacaciones.vacaciones_inicio.strftime("%m")), 
+					int(vacaciones.vacaciones_inicio.strftime("%d"))
+					)
+				fin_vacaciones    = (
+					int(vacaciones.vacaciones_fin.strftime("%m")), 
+					int(vacaciones.vacaciones_fin.strftime("%d"))
+					)
 
-			if fecha_actual[1]>=inicio_vacaciones[1] and fecha_actual[0] == inicio_vacaciones[0] or fecha_actual[0]>inicio_vacaciones[0] and fecha_actual[0] <= fin_vacaciones[0]:
-				del aux_list_agentes[foo]
-				del aux_list_cant_leads[foo]
-				del aux_list_tasat_conv[foo]
-			foo += 1
-		
-		# Filtrado
-		if len(aux_list_agentes)>0:
-			self.list_agentes 	 = aux_list_agentes
-			self.list_cant_leads = aux_list_cant_leads
-			self.list_tasat_conv = aux_list_tasat_conv
-			return True
-		else:
-			return False
+				if fecha_actual[1]>=inicio_vacaciones[1] and fecha_actual[0] == inicio_vacaciones[0] or fecha_actual[0]>inicio_vacaciones[0] and fecha_actual[0] <= fin_vacaciones[0]:
+					del aux_list_agentes[foo]
+					del aux_list_cant_leads[foo]
+					del aux_list_tasat_conv[foo]
+				foo += 1
+	
+				# Filtrado
+				if len(aux_list_agentes)>0:
+					self.list_agentes 	 = aux_list_agentes
+					self.list_cant_leads = aux_list_cant_leads
+					self.list_tasat_conv = aux_list_tasat_conv
+					return True
+				else:
+					return False
+
+			else:
+				return False
 
 	def filtro_feriado(self):
 
-		feriados = FeriadosLatam.FeriadosLatam()
-		now = datetime.datetime.now()
-		dia = int(now.strftime("%d"))
-		mes = int(now.strftime("%m"))
-		fecha  = (mes, dia) 
-		foo= 0
+		feriados = FeriadosLatam()
+		now      = datetime.datetime.now()
+		dia      = int(now.strftime("%d"))
+		mes      = int(now.strftime("%m"))
+		fecha    = (mes, dia) 
+
 		paises = []
+		foo    = 0
+
 		aux_list_agentes 	= self.list_agentes
 		aux_list_cant_leads = self.list_cant_leads
 		aux_list_tasat_conv = self.list_tasat_conv
@@ -176,9 +191,9 @@ class CrmLead(models.Model):
 			if fecha==i:
 				paises.append(299)
 
-		for i in aux_list_agentes:
+		for agente in aux_list_agentes:
 
-			pais_agente = self.env['res.users'].browse(i).country_id.id
+			pais_agente = self.env['res.users'].browse(agente).country_id.id
 
 			if  pais_agente in paises:
 				del aux_list_agentes[foo]
@@ -196,9 +211,9 @@ class CrmLead(models.Model):
 			return False
 
 	def filtro_horario(self):
-		semana = int(self.fecha_entrada.weekday())
-		hora = int(self.fecha_entrada.strftime('%H'))
-		minu = int(self.fecha_entrada.strftime('%M'))
+		semana = int(datetime.datetime.now().weekday())
+		hora   = int(datetime.datetime.now().strftime('%H'))
+		minu   = int(datetime.datetime.now().strftime('%M'))
 
 		paises = []
 
@@ -241,18 +256,19 @@ class CrmLead(models.Model):
 
 	def viejo_lead(self):
 
-		aux = False
-		aux2 = False
+		agente = ''
+		aux    = False
+		aux2   = False
 		todos_leads = self.env['crm.lead'].search([])
 
 		telefonos = []
-		emails = []
-		agentes = []
+		emails    = []
+		agentes   = []
 
 		for lead in todos_leads:
 			telefonos.append(lead.phone)
 			emails.append(lead.email_from)
-			agentes.append(lead.x_contactonuevoodup12) 
+			agentes.append(lead.user_id) 
 			# CAMPO "ACTUAL": x_contactonuevoodup12
 			# Campo usado para pruebas en local: user_id
 
@@ -261,7 +277,7 @@ class CrmLead(models.Model):
 		for telf in li_todos_leads[0]:
 			if (self.telf == telf) and (self.telf != False):
 				aux2 = True
-				aux = False
+				aux  = False
 				aux_indice = li_todos_leads[0].index(telf)
 				aux_agente =  li_todos_leads[2][aux_indice].id
 				break
@@ -289,13 +305,15 @@ class CrmLead(models.Model):
 		return agente
 
 	def asigna_anterior_agente(self):
+
+		viejo_agente = ''
 		
-		for i in self.dic_agents["Agente"]:
-				if i == viejo_lead():
-					agent = i
+		for agente in self.dic_agents["Agente"]:
+				if agente == self.viejo_lead():
+					viejo_agente = agente
 					values.update({'user_id': self.viejo_lead()})					
 					break
-		if agent:
+		if viejo_agente:
 			return True
 		else:
 			 return False		
@@ -303,16 +321,14 @@ class CrmLead(models.Model):
 
 	
 	def filtro_area_agente(self):
-
+		
+		agentes_misma_area = []
 		# Traemos a los agentes de la lista de agentes del diccionario:
 		aux_agentes = self.list_agentes
-
 		# Traemos a todos los agentes los cuales se encuentran en el area del agente:
-		area_lead = self.area_lead
-		area_agent = self.env['atributos.agentes'].search([('area_curso', '=', area_lead)])
+		area_lead   = self.area_lead
+		area_agent  = self.env['atributos.agentes'].search([('area_curso', '=', area_lead)])
 		
-
-		agentes_misma_area = []
 		for agente in area_agent:
 			agentes_misma_area.append(agente.agente_name.id)
 
@@ -356,7 +372,7 @@ class CrmLead(models.Model):
 
 		# Guardamos solo las coincidencias que hay entre las listas: (agentes_mismo_pais) y (agentes_disponibles):
 		set_agentes_disponibles = set(aux_agentes)
-		set_agentes_mismo_pais = set(agentes_mismo_pais)
+		set_agentes_mismo_pais  = set(agentes_mismo_pais)
 
 
 		# Intersectamos los dos conjuntos para que se conserven las coincidencias:
@@ -389,9 +405,9 @@ class CrmLead(models.Model):
 			return False
 
 
-	def num_max_leads(self):
+	def filtro_num_max_leads(self):
 
-		li_agentes = self.list_agentes
+		li_agentes    = self.list_agentes
 		li_cant_leads = self.list_cant_leads
 		li_tasat_conv = self.list_tasat_conv
 
@@ -414,8 +430,8 @@ class CrmLead(models.Model):
 
 			macro_list.append(aux_list)
 
-		agentes = []
-		tasas = []
+		agentes    = []
+		tasas      = []
 		cantidades = []
 		for i in macro_list:
 				
@@ -439,10 +455,10 @@ class CrmLead(models.Model):
 
 	def asigna_nuevo_agente(self):
 
-		menor=10000
-		lista=[]
-		index=0
-		mayor=0
+		menor = 10000
+		lista = []
+		index = 0
+		mayor = 0
 
 		for i in self.dic_agents["Numero de Leads"]:
 			if i < menor:
