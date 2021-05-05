@@ -10,7 +10,7 @@
 
 			<field name="arch" type="xml">
 				<tree string="Log de Aisgnacion">
-					<field name="agente_lead" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+					<field name="agente_lead" domain="[('security_role_ids', '=', 'Ventas / Asesor')]" />
 					<field name="pais_lead" />
 					<field name="filtro_vacaciones" />
 					<field name="filtro_feriado" />
@@ -34,7 +34,7 @@
 				<form string="Log de Asignacion">
 					<sheet>
 						<group col="4">
-							<field name="agente_lead" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+							<field name="agente_lead" domain="[('security_role_ids', '=', 'Ventas / Asesor')]" />
 							<field name="pais_lead" />
 							<field name="filtro_vacaciones" />
 							<field name="filtro_feriado" />
@@ -58,7 +58,7 @@
 
 			<field name="arch" type="xml">
 				<search string="Log de Aisgnacion">
-					<field name="agente_lead" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+					<field name="agente_lead" domain="[('security_role_ids', '=', 'Ventas / Asesor')]" />
 					<field name="pais_lead" />
 					<field name="filtro_vacaciones" />
 					<field name="filtro_feriado" />

@@ -7,7 +7,7 @@ class AutoLeadLogRegister(models.Model):
     _description = 'logs de asignacion agentes'
     
    
-    agente_lead = fields.Many2one("res.users", string="Agentes")
+    agente_lead = fields.Many2one("res.users", string="Agente")
     pais_lead = fields.Many2one("res.country", string="Pais")
     filtro_vacaciones = fields.Boolean(default=False, required=False)
     filtro_feriado = fields.Boolean(default=False, required=False)

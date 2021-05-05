@@ -10,7 +10,7 @@
 
 			<field name="arch" type="xml">
 				<tree string="Atributos Agentes">
-					<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+					<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas / Asesor')]" />
 					<field name="vacaciones_inicio" />
 					<field name="vacaciones_fin" />
 					<field name="horario_laboral" />
@@ -31,7 +31,7 @@
 				<form string="Atributos Agentes">
 					<sheet>
 						<group col="4">
-							<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+							<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas / Asesor')]" />
 							<field name="vacaciones_inicio" />
 							<field name="vacaciones_fin" />
 							<field name="horario_laboral" />
@@ -52,7 +52,7 @@
 
 			<field name="arch" type="xml">
 				<search string="Atributos Agentes">
-					<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas Asesor')]" />
+					<field name="agente_name" domain="[('security_role_ids', '=', 'Ventas / Asesor')]" />
 					<field name="vacaciones_inicio" />
 					<field name="vacaciones_fin" />
 					<field name="horario_laboral" />

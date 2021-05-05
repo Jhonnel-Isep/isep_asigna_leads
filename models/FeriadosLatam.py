@@ -2,7 +2,7 @@ import datetime
 import calendar
 
 
-class Feriados_Latam:
+class FeriadosLatam:
     # Constantes
     x = datetime.datetime.now()
     year = x.year  # para automatico x.year , manual colocar año
@@ -100,7 +100,6 @@ class Feriados_Latam:
         d_resu = self.date_format(self.easter)
 
         lista = [(1, 1), c_mex, b_suar, d_resu, (5, 1), (9, 16), r_mex, (12, 25)]
-
         return lista
 
     def colombia(self):
@@ -140,7 +139,6 @@ class Feriados_Latam:
             (12, 8),
             (12, 25),
         ]
-
         return lista
 
     def salvador(self):
@@ -241,5 +239,4 @@ class Feriados_Latam:
             (12, 25),
             (12, 31),
         ]
-
         return lista
